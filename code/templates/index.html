@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoramento de Preços</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .results-container {
+            margin-top: 20px;
+            white-space: pre-wrap;
+            background-color: white;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .loading {
+            display: none;
+            margin-top: 20px;
+        }
+        .tab-content {
+            padding: 20px;
+            background-color: white;
+            border-radius: 0 0 5px 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">Monitoramento de Preços</h1>
+        
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="single-tab" data-bs-toggle="tab" data-bs-target="#single" type="button" role="tab">Busca Individual</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="excel-tab" data-bs-toggle="tab" data-bs-target="#excel" type="button" role="tab">Busca em Massa</button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="myTabContent">
+            <!-- Single Product Search Tab -->
+            <div class="tab-pane fade show active" id="single" role="tabpanel">
+                <form id="searchForm" class="mb-4">
+                    <div class="mb-3">
+                        <label for="product_name" class="form-label">Nome do Produto</label>
+                        <input type="text" class="form-control" id="product_name" name="product_name" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Buscar</button>
+                </form>
+                <div id="searchLoading" class="loading text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p>Buscando produto...</p>
+                </div>
+                <div id="searchResults" class="results-container"></div>
+            </div>
+
+            <!-- Excel Upload Tab -->
+            <div class="tab-pane fade" id="excel" role="tabpanel">
+                <form id="excelForm" class="mb-4">
+                    <div class="mb-3">
+                        <label for="excelFile" class="form-label">Arquivo Excel</label>
+                        <input type="file" class="form-control" id="excelFile" name="file" accept=".xlsx,.xls" required>
+                        <small class="form-text text-muted">O arquivo deve ter uma coluna chamada "nome" com os produtos a serem pesquisados.</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Processar Arquivo</button>
+                </form>
+                <div id="excelLoading" class="loading text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p>Processando produtos...</p>
+                </div>
+                <div id="excelResults" class="results-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Single Product Search
+        document.getElementById('searchForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const productName = document.getElementById('product_name').value;
+            const resultsDiv = document.getElementById('searchResults');
+            const loadingDiv = document.getElementById('searchLoading');
+
+            resultsDiv.innerHTML = '';
+            loadingDiv.style.display = 'block';
+
+            try {
+                const formData = new FormData();
+                formData.append('product_name', productName);
+
+                const response = await fetch('/search_product', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultsDiv.innerHTML = `<pre>${data.results}</pre>`;
+                } else {
+                    resultsDiv.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = '<div class="alert alert-danger">Erro ao processar a requisição</div>';
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        });
+
+        // Excel File Processing
+        document.getElementById('excelForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('excelFile');
+            const resultsDiv = document.getElementById('excelResults');
+            const loadingDiv = document.getElementById('excelLoading');
+
+            if (!fileInput.files[0]) {
+                resultsDiv.innerHTML = '<div class="alert alert-danger">Selecione um arquivo</div>';
+                return;
+            }
+
+            resultsDiv.innerHTML = '';
+            loadingDiv.style.display = 'block';
+
+            try {
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+
+                const response = await fetch('/process_excel', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    let resultsHtml = '';
+                    data.results.forEach(result => {
+                        resultsHtml += `<h4>${result.product_name}</h4><pre>${result.content}</pre><hr>`;
+                    });
+                    resultsDiv.innerHTML = resultsHtml;
+                } else {
+                    resultsDiv.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = '<div class="alert alert-danger">Erro ao processar a requisição</div>';
+            } finally {
+                loadingDiv.style.display = 'none';
+                fileInput.value = ''; // Reset file input
+            }
+        });
+    </script>
+</body>
+</html>
