@@ -1,72 +1,340 @@
 /* Estilos personalizados para o sistema de monitoramento de preços */
 
-body {
-    background-color: #f8f9fa;
+:root {
+    --primaria: #2563eb;
+    --sucesso: #16a34a;
+    --perigo: #dc2626;
+    --aviso: #f59e0b;
+    --fundo: #f1f5f9;
+    --branco: #ffffff;
+    --texto: #1e293b;
+    --texto-leve: #64748b;
+    --borda: #e2e8f0;
+    --sombra: 0 1px 3px rgba(0,0,0,0.06);
+    --sombra-md: 0 4px 12px rgba(0,0,0,0.08);
+    --radius: 10px;
 }
 
+body {
+    background-color: var(--fundo);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: var(--texto);
+}
+
+/* ===== Tabs ===== */
+.nav-tabs { border-bottom: 2px solid var(--borda); }
+
+.nav-tabs .nav-link {
+    border: none;
+    color: var(--texto-leve);
+    font-weight: 500;
+    padding: 12px 20px;
+    transition: all 0.2s;
+}
+
+.nav-tabs .nav-link:hover {
+    color: var(--primaria);
+    background: rgba(37,99,235,0.04);
+}
+
+.nav-tabs .nav-link.active {
+    font-weight: 700;
+    color: var(--primaria);
+    border-bottom: 3px solid var(--primaria);
+    background: transparent;
+}
+
+/* ===== Accordion / relatórios ===== */
 .accordion-button:not(.collapsed) {
     background-color: #e7f1ff;
-    color: #0d6efd;
+    color: var(--primaria);
+}
+.card-header { font-weight: bold; }
+
+/* ===== GRUPO DE BUSCA (dropdown por data/hora) ===== */
+.grupo-busca {
+    background: var(--branco);
+    border: 1px solid var(--borda);
+    border-radius: var(--radius);
+    box-shadow: var(--sombra);
+    overflow: hidden;
+    transition: box-shadow 0.2s;
 }
 
-.card-header {
-    font-weight: bold;
+.grupo-busca:hover {
+    box-shadow: var(--sombra-md);
 }
 
-.navbar-brand {
-    font-weight: bold;
+.grupo-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    cursor: pointer;
+    background: linear-gradient(135deg, #f8fafc, #ffffff);
+    transition: background 0.15s;
+    user-select: none;
 }
 
-.result-card {
-    transition: transform 0.3s;
+.grupo-header:hover {
+    background: linear-gradient(135deg, #eef2f7, #f8fafc);
 }
 
-.result-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+.grupo-header-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
-.price-highlight {
-    font-weight: bold;
-    color: #dc3545;
+.grupo-icone {
+    font-size: 1.5rem;
 }
 
-.store-badge {
-    padding: 5px 10px;
-    border-radius: 20px;
+.grupo-data {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--texto);
+}
+
+.grupo-resumo {
+    font-size: 0.82rem;
+    color: var(--texto-leve);
+    margin-top: 2px;
+}
+
+.grupo-seta {
+    font-size: 0.85rem;
+    color: var(--texto-leve);
+    transition: transform 0.2s;
+}
+
+/* Collapsible body */
+.grupo-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease, padding 0.3s ease;
+    padding: 0 20px;
+}
+
+.grupo-body.aberto {
+    max-height: 8000px;
+    padding: 10px 20px 20px;
+}
+
+/* ===== ITEM DE BUSCA (cada produto buscado dentro do grupo) ===== */
+.busca-item {
+    background: #f8fafc;
+    border: 1px solid var(--borda);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    overflow: hidden;
+}
+
+.busca-item:last-child {
+    margin-bottom: 0;
+}
+
+.busca-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.busca-item-nome {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.busca-item-nome strong {
+    word-break: break-word;
+}
+
+.busca-status { font-size: 1rem; }
+
+.busca-item-badges {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.badge-qtd {
+    background: #dbeafe;
+    color: #1e40af;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 12px;
+}
+
+.badge-vazio-sm {
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 12px;
+}
+
+.btn-deletar {
+    background: none;
+    border: 1px solid var(--borda);
+    border-radius: 6px;
+    cursor: pointer;
+    padding: 4px 8px;
     font-size: 0.8rem;
-    font-weight: bold;
+    transition: background 0.15s, border-color 0.15s;
 }
 
+.btn-deletar:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
+}
+
+/* ===== TABELA DE PRODUTOS ===== */
+.tabela-produtos {
+    overflow-x: auto;
+    padding: 0 16px 14px;
+}
+
+.tabela-produtos table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+}
+
+.tabela-produtos thead tr {
+    background: var(--texto);
+    color: var(--branco);
+}
+
+.tabela-produtos th {
+    padding: 10px 12px;
+    font-weight: 600;
+    text-align: left;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.tabela-produtos th:first-child {
+    border-radius: 6px 0 0 0;
+}
+
+.tabela-produtos th:last-child {
+    border-radius: 0 6px 0 0;
+}
+
+.tabela-produtos td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.tabela-produtos tbody tr {
+    transition: background 0.1s;
+}
+
+.tabela-produtos tbody tr:hover {
+    background: #f0f5ff;
+}
+
+.tabela-produtos tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Linha do melhor preço */
+.linha-melhor {
+    background: #f0fdf4 !important;
+}
+
+.linha-melhor:hover {
+    background: #dcfce7 !important;
+}
+
+.col-num { width: 40px; text-align: center; color: var(--texto-leve); }
+.col-nome { max-width: 320px; word-break: break-word; }
+.col-preco { white-space: nowrap; font-weight: 700; font-size: 0.95rem; }
+.col-loja { white-space: nowrap; }
+.col-acao { white-space: nowrap; text-align: center; }
+
+.preco-melhor {
+    color: var(--sucesso) !important;
+    font-size: 1rem;
+}
+
+/* Tags de loja */
+.loja-tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.loja-amazon { background: #fff3e0; color: #e65100; }
+.loja-ml { background: #fff9c4; color: #f57f17; }
+.loja-magalu { background: #e3f2fd; color: #1565c0; }
+.loja-casasbahia { background: #fff9c4; color: #f9a825; }
+.loja-kabum { background: #fff3e0; color: #e65100; }
+
+/* Botão ver produto */
+.btn-ver {
+    display: inline-block;
+    background: var(--primaria);
+    color: var(--branco);
+    padding: 5px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 0.78rem;
+    font-weight: 600;
+    transition: background 0.15s, transform 0.1s;
+}
+
+.btn-ver:hover {
+    background: #1d4ed8;
+    color: var(--branco);
+    transform: scale(1.04);
+}
+
+/* ===== Loading ===== */
 .loading-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(255, 255, 255, 0.8);
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(255,255,255,0.8);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 1000;
 }
 
-.nav-tabs .nav-link.active {
-    font-weight: bold;
-    border-bottom: 3px solid #0d6efd;
+/* ===== Summary card (relatórios) ===== */
+.summary-card {
+    background: #f8f9fa;
+    border-left: 4px solid var(--primaria);
 }
 
-.summary-card {
-    background-color: #f8f9fa;
-    border-left: 4px solid #0d6efd;
+/* ===== Responsivo ===== */
+@media (max-width: 768px) {
+    .grupo-header { padding: 12px 14px; }
+    .grupo-data { font-size: 0.95rem; }
+    .busca-item-header { flex-direction: column; align-items: flex-start; }
+    .tabela-produtos { font-size: 0.82rem; }
+    .col-nome { max-width: 180px; }
 }
 
 @media (max-width: 576px) {
-    .container {
-        padding: 0;
-    }
-    
-    .table-responsive {
-        margin: 0 -15px;
-    }
+    .container { padding: 0 8px; }
+    .table-responsive { margin: 0 -15px; }
+    .tabela-produtos th, .tabela-produtos td { padding: 8px 8px; }
 }

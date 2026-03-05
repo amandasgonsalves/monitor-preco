@@ -73,19 +73,62 @@ def ver_relatorio(nome_relatorio):
 
 @app.route('/api/resultados', methods=['GET'])
 def get_resultados():
-    """Rota para retornar todos os resultados das buscas realizadas."""
-    pasta_resultados = 'resultados'
-    resultados = []
+    """Rota para retornar todos os resultados agrupados por data/hora da busca."""
+    pasta_resultados = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resultados')
+    resultados_brutos = []
 
     if os.path.exists(pasta_resultados):
         for arquivo in os.listdir(pasta_resultados):
             if arquivo.endswith('.json'):
                 caminho_arquivo = os.path.join(pasta_resultados, arquivo)
-                with open(caminho_arquivo, 'r', encoding='utf-8') as f:
-                    dados = json.load(f)
-                    resultados.append(dados)
+                try:
+                    with open(caminho_arquivo, 'r', encoding='utf-8') as f:
+                        dados = json.load(f)
+                        dados['arquivo'] = arquivo
+                        resultados_brutos.append(dados)
+                except (json.JSONDecodeError, IOError):
+                    continue
 
-    return jsonify(resultados)
+    # Agrupa por timestamp (buscas feitas no mesmo minuto ficam juntas)
+    grupos = {}
+    for r in resultados_brutos:
+        ts = r.get('timestamp', 'Sem data')
+        # Agrupa por minuto (remove segundos) para juntar buscas em massa
+        try:
+            dt = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+            chave = dt.strftime("%Y-%m-%d %H:%M")
+            chave_display = dt.strftime("%d/%m/%Y às %H:%M")
+        except (ValueError, TypeError):
+            chave = ts
+            chave_display = ts
+
+        if chave not in grupos:
+            grupos[chave] = {
+                'chave': chave,
+                'data_display': chave_display,
+                'buscas': []
+            }
+        grupos[chave]['buscas'].append(r)
+
+    # Ordena por data mais recente primeiro
+    resultado_agrupado = sorted(grupos.values(), key=lambda g: g['chave'], reverse=True)
+
+    return jsonify(resultado_agrupado)
+
+@app.route('/api/resultados/<nome_arquivo>', methods=['DELETE'])
+def deletar_resultado(nome_arquivo):
+    """Remove um arquivo de resultado."""
+    pasta_resultados = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resultados')
+    caminho_arquivo = os.path.join(pasta_resultados, nome_arquivo)
+    
+    if os.path.exists(caminho_arquivo) and nome_arquivo.endswith('.json'):
+        try:
+            os.remove(caminho_arquivo)
+            return jsonify({"success": True, "message": "Resultado removido com sucesso."})
+        except Exception as e:
+            return jsonify({"success": False, "message": str(e)}), 500
+    
+    return jsonify({"success": False, "message": "Arquivo não encontrado."}), 404
 
 @app.template_filter('format_datetime')
 def format_datetime(value):
