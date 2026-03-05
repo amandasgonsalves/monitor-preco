@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 import json
 import os
 from datetime import datetime
@@ -70,6 +70,22 @@ def ver_relatorio(nome_relatorio):
     except (FileNotFoundError, json.JSONDecodeError) as e:
         flash(f'Erro ao carregar relatório: {str(e)}')
         return redirect(url_for('index'))
+
+@app.route('/api/resultados', methods=['GET'])
+def get_resultados():
+    """Rota para retornar todos os resultados das buscas realizadas."""
+    pasta_resultados = 'resultados'
+    resultados = []
+
+    if os.path.exists(pasta_resultados):
+        for arquivo in os.listdir(pasta_resultados):
+            if arquivo.endswith('.json'):
+                caminho_arquivo = os.path.join(pasta_resultados, arquivo)
+                with open(caminho_arquivo, 'r', encoding='utf-8') as f:
+                    dados = json.load(f)
+                    resultados.append(dados)
+
+    return jsonify(resultados)
 
 @app.template_filter('format_datetime')
 def format_datetime(value):

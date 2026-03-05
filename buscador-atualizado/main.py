@@ -14,13 +14,15 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.webdriver.common.action_chains import ActionChains
+import random
 
 def configurar_driver():
-    """Configura e retorna o driver do Chrome com opções otimizadas - MODO INVISÍVEL"""
+    """Configura e retorna o driver do Chrome com opções otimizadas - MODO VISÍVEL"""
     chrome_options = Options()
-    
-    # CONFIGURAÇÕES PARA MODO INVISÍVEL (HEADLESS)
-    chrome_options.add_argument("--headless=new")  # Modo invisível mais moderno
+
+    # CONFIGURAÇÕES PARA MODO VISÍVEL (DESATIVA HEADLESS)
+    # chrome_options.add_argument("--headless=new")  # Comentado para exibir o navegador
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")  # Desabilita GPU (importante para headless)
@@ -28,8 +30,8 @@ def configurar_driver():
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
     chrome_options.add_experimental_option('useAutomationExtension', False)
     chrome_options.add_argument("--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-    
-    # Configurações adicionais para estabilidade em modo invisível
+
+    # Configurações adicionais para estabilidade
     chrome_options.add_argument("--disable-extensions")
     chrome_options.add_argument("--disable-web-security")
     chrome_options.add_argument("--allow-running-insecure-content")
@@ -40,25 +42,46 @@ def configurar_driver():
     chrome_options.add_argument("--disable-background-timer-throttling")
     chrome_options.add_argument("--disable-backgrounding-occluded-windows")
     chrome_options.add_argument("--disable-renderer-backgrounding")
-    
+
     # Método 1: Usar WebDriver Manager (recomendado para compatibilidade)
     try:
-        print(" Configurando Chrome invisível com WebDriver Manager...")
+        print(" Configurando Chrome visível com WebDriver Manager...")
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=chrome_options)
         return driver
     except Exception as e:
         print(f"Erro com WebDriver Manager: {e}")
-    
+
     # Método 2: Usar método direto do Chrome (Windows)
     try:
-        print(" Última tentativa - Chrome invisível com configurações específicas...")
+        print(" Última tentativa - Chrome visível com configurações específicas...")
         driver = webdriver.Chrome(options=chrome_options)
         return driver
     except Exception as e:
-        print(f"Erro na configuração invisível: {e}")
-        
+        print(f"Erro na configuração visível: {e}")
+
     return None
+
+def simular_movimentos_mouse(driver, elemento):
+    """Simula movimentos do mouse para um elemento."""
+    try:
+        acao = ActionChains(driver)
+        acao.move_to_element(elemento).perform()
+        time.sleep(random.uniform(0.5, 1.5))  # Atraso aleatório
+    except Exception as e:
+        print(f"Erro ao simular movimento do mouse: {e}")
+
+def rolar_tela(driver):
+    """Rola a tela para cima e para baixo para simular comportamento humano."""
+    try:
+        print("Rolando a tela para baixo...")
+        driver.execute_script("window.scrollBy(0, 500);")
+        time.sleep(random.uniform(1, 2))
+        print("Rolando a tela para cima...")
+        driver.execute_script("window.scrollBy(0, -500);")
+        time.sleep(random.uniform(1, 2))
+    except Exception as e:
+        print(f"Erro ao rolar a tela: {e}")
 
 def buscar_produtos_patrocinados(produto, max_tentativas=2):
     """
@@ -78,42 +101,61 @@ def buscar_produtos_patrocinados(produto, max_tentativas=2):
             
             print(f" Acessando Google Shopping...")
             driver.get("https://www.google.com/shopping?hl=pt-BR")
-            
+
             # Aguarda a página carregar com timeout maior
-            wait = WebDriverWait(driver, 20)
-            
+            wait = WebDriverWait(driver, 15)  # Reduzido de 20 para 15 segundos
+
+            # Rola a tela para cima e para baixo antes de interagir com a busca
+            rolar_tela(driver)
+
             print(f" Procurando campo de busca...")
             # Tenta diferentes seletores para o campo de busca
             campo_busca = None
-            seletores_busca = ["#APjFqb", "input[name='q']", "input[type='search']"]
-            
+            seletores_busca = [
+                "textarea.gLFyf",  # Atualizado para usar o seletor mais confiável primeiro
+                "#APjFqb", 
+                "input[name='q']", 
+                "input[type='search]"
+            ]
+
             for seletor in seletores_busca:
                 try:
                     campo_busca = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, seletor)))
+                    simular_movimentos_mouse(driver, campo_busca)  # Simula movimento do mouse
                     break
                 except TimeoutException:
+                    print(f" Seletor {seletor} não funcionou, tentando próximo...")
                     continue
-            
+
             if not campo_busca:
                 raise Exception("Campo de busca não encontrado")
-            
-            print(f" Digitando: {produto}")
-            campo_busca.clear()
-            time.sleep(1)
-            
-            # Digita o produto caractere por caractere para evitar detecção
-            for char in produto:
-                campo_busca.send_keys(char)
-                time.sleep(0.1)
-            
-            time.sleep(2)
-            campo_busca.send_keys(Keys.ENTER)
-            
+
+            # Garantir que o seletor correto seja clicado e o nome do produto seja digitado
+            try:
+                simular_movimentos_mouse(driver, campo_busca)  # Simula movimento do mouse
+                campo_busca.click()
+                print("Campo de busca clicado com sucesso.")
+
+                print(f"Digitando: {produto}")
+                campo_busca.clear()
+
+                # Digitar o produto diretamente sem atrasos excessivos
+                campo_busca.send_keys(produto)
+                time.sleep(1)  # Reduzido o tempo de espera
+                campo_busca.send_keys(Keys.ENTER)
+            except Exception as e:
+                raise Exception(f"Erro ao interagir com o campo de busca: {e}")
+
             print(" Aguardando resultados carregarem...")
-            time.sleep(8)  # Aumentado o tempo de espera
-            
+            time.sleep(5)  # Reduzido o tempo de espera para resultados
+
             print(" Procurando produtos patrocinados...")
-            
+
+            # Simula rolagem na página
+            for _ in range(3):
+                driver.execute_script("window.scrollBy(0, 300);")
+                time.sleep(random.uniform(1, 2))
+
             # Tenta diferentes padrões de produtos
             produtos_encontrados = []
             seletores_produtos = [
@@ -123,29 +165,30 @@ def buscar_produtos_patrocinados(produto, max_tentativas=2):
                 ".PLla-d",
                 "[role='listitem']"
             ]
-            
+
             for seletor in seletores_produtos:
                 elementos = driver.find_elements(By.CSS_SELECTOR, seletor)
                 if elementos:
                     produtos_encontrados = elementos
                     print(f" Encontrados {len(elementos)} elementos com seletor: {seletor}")
                     break
-            
+
             if not produtos_encontrados:
                 print(" Nenhum produto encontrado, tentando busca mais ampla...")
                 produtos_encontrados = driver.find_elements(By.CSS_SELECTOR, "div[data-hveid], div[data-ved]")
-            
+
             print(f" Processando {len(produtos_encontrados)} elementos...")
-            
+
             for i, produto_elem in enumerate(produtos_encontrados[:20]):
                 try:
+                    simular_movimentos_mouse(driver, produto_elem)  # Simula movimento do mouse
                     produto_info = extrair_info_produto_melhorado(produto_elem, driver, i)
                     if produto_info and any(produto_info.values()):
                         resultados["produtos_patrocinados"].append(produto_info)
                         print(f"✅ Produto {i+1}: {produto_info.get('nome', 'N/A')[:50]}...")
                 except Exception as e:
                     continue
-            
+
             return resultados
             
         except Exception as e:
@@ -526,104 +569,221 @@ def extrair_produtos_generico(driver):
     return produtos
 
 def salvar_resultados(resultados, nome_arquivo="resultados_google_shopping.json"):
-    """Salva os resultados em um arquivo JSON"""
+    """Salva os resultados em um arquivo JSON na pasta 'resultados'"""
     try:
-        with open(nome_arquivo, 'w', encoding='utf-8') as f:
+        # Cria a pasta 'resultados' se não existir
+        pasta_resultados = "resultados"
+        if not os.path.exists(pasta_resultados):
+            os.makedirs(pasta_resultados)
+
+        # Define o caminho completo do arquivo
+        caminho_arquivo = os.path.join(pasta_resultados, nome_arquivo)
+
+        with open(caminho_arquivo, 'w', encoding='utf-8') as f:
             json.dump(resultados, f, indent=2, ensure_ascii=False)
-        print(f"\nResultados salvos em: {nome_arquivo}")
+        print(f"\nResultados salvos em: {caminho_arquivo}")
         return True
     except Exception as e:
         print(f"Erro ao salvar arquivo: {e}")
         return False
 
+def exibir_resultados(resultados):
+    """Exibe os resultados da busca de forma estruturada na tela."""
+    print("\n" + "="*50)
+    print("RESULTADOS DA BUSCA")
+    print("="*50)
+    print(f"Produto buscado: {resultados['produto_buscado']}")
+    print(f"Timestamp: {resultados['timestamp']}")
+    print(f"Produtos encontrados: {len(resultados['produtos_patrocinados'])}")
+
+    if resultados['produtos_patrocinados']:
+        print("\n" + "="*50)
+        print("PRODUTOS PATROCINADOS ENCONTRADOS")
+        print("="*50)
+
+        for i, produto in enumerate(resultados['produtos_patrocinados'], 1):
+            print(f"\n[PRODUTO {i}]")
+            print(f"Nome: {produto.get('nome', 'N/A')}")
+            print(f"Preço: {produto.get('preco', 'N/A')}")
+            print(f"Loja: {produto.get('loja', 'N/A')}")
+            print(f"Link: {produto.get('link', 'N/A')}")
+            print("-" * 40)
+    else:
+        print("\nNenhum produto patrocinado foi encontrado.")
+
+def configurar_navegador():
+    """Configura o navegador no modo headless."""
+    options = Options()
+    options.add_argument('--headless')  # Desativa a visualização do navegador
+    options.add_argument('--disable-gpu')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    return options
+
+def buscar_produto(produto):
+    """Realiza a busca de um produto no Google Shopping."""
+    options = configurar_navegador()
+    driver = webdriver.Chrome(service=Service(), options=options)
+
+    try:
+        print(f" Buscando por: {produto}")
+        driver.get("https://www.google.com.br/shopping")
+
+        # Aguarda a página carregar com timeout maior
+        wait = WebDriverWait(driver, 15)  # Aumentado para 15 segundos
+
+        # Rola a tela para baixo para carregar mais resultados
+        rolar_tela(driver)
+
+        print(f" Procurando campo de busca...")
+        # Tenta diferentes seletores para o campo de busca
+        campo_busca = None
+        seletores_busca = [
+            "textarea.gLFyf",  # Atualizado para usar o seletor mais confiável primeiro
+            "#APjFqb", 
+            "input[name='q']", 
+            "input[type='search]"
+        ]
+
+        for seletor in seletores_busca:
+            try:
+                campo_busca = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, seletor)))
+                simular_movimentos_mouse(driver, campo_busca)  # Simula movimento do mouse
+                break
+            except TimeoutException:
+                print(f" Seletor {seletor} não funcionou, tentando próximo...")
+                continue
+
+        if not campo_busca:
+            raise Exception("Campo de busca não encontrado")
+
+        # Garantir que o seletor correto seja clicado e o nome do produto seja digitado
+        try:
+            simular_movimentos_mouse(driver, campo_busca)  # Simula movimento do mouse
+            campo_busca.click()
+            print("Campo de busca clicado com sucesso.")
+
+            print(f"Digitando: {produto}")
+            campo_busca.clear()
+
+            # Digitar o produto diretamente sem atrasos excessivos
+            campo_busca.send_keys(produto)
+            time.sleep(1)  # Reduzido o tempo de espera
+            campo_busca.send_keys(Keys.ENTER)
+        except Exception as e:
+            raise Exception(f"Erro ao interagir com o campo de busca: {e}")
+
+        print(" Aguardando resultados carregarem...")
+        time.sleep(5)  # Reduzido o tempo de espera para resultados
+
+        print(" Procurando produtos patrocinados...")
+
+        # Simula rolagem na página
+        for _ in range(3):
+            driver.execute_script("window.scrollBy(0, 300);")
+            time.sleep(random.uniform(1, 2))
+
+        # Tenta diferentes padrões de produtos
+        produtos_encontrados = []
+        seletores_produtos = [
+            "[id^='vplahcl_']",
+            "[data-docid][jscontroller]", 
+            ".sh-dgr__content",
+            ".PLla-d",
+            "[role='listitem']"
+        ]
+
+        for seletor in seletores_produtos:
+            elementos = driver.find_elements(By.CSS_SELECTOR, seletor)
+            if elementos:
+                produtos_encontrados = elementos
+                print(f" Encontrados {len(elementos)} elementos com seletor: {seletor}")
+                break
+
+        if not produtos_encontrados:
+            print(" Nenhum produto encontrado, tentando busca mais ampla...")
+            produtos_encontrados = driver.find_elements(By.CSS_SELECTOR, "div[data-hveid], div[data-ved]")
+
+        print(f" Processando {len(produtos_encontrados)} elementos...")
+
+        for i, produto_elem in enumerate(produtos_encontrados[:20]):
+            try:
+                simular_movimentos_mouse(driver, produto_elem)  # Simula movimento do mouse
+                produto_info = extrair_info_produto_melhorado(produto_elem, driver, i)
+                if produto_info and any(produto_info.values()):
+                    resultados["produtos_patrocinados"].append(produto_info)
+                    print(f"✅ Produto {i+1}: {produto_info.get('nome', 'N/A')[:50]}...")
+            except Exception as e:
+                continue
+
+        return resultados
+            
+    except Exception as e:
+        print(f" Erro na tentativa {tentativa + 1}: {e}")
+        if tentativa < max_tentativas - 1:
+            print(" Tentando novamente em 5 segundos...")
+            time.sleep(5)
+    finally:
+        if driver:
+            try:
+                driver.quit()
+            except:
+                pass
+
 def main(produto_busca):
     """Função principal"""
     print("=== Buscador de Produtos Google Shopping (Área Patrocinados) ===\n")
-    
-    #produto_busca = input("Digite o nome do produto que deseja buscar: ").strip()
-    
+
     if not produto_busca:
         print("Erro: Você deve digitar um produto para buscar.")
         return
-    
+
     print(f"\nIniciando busca por: '{produto_busca}'")
     print("Focando na área de produtos patrocinados...")
     print("Isso pode levar alguns segundos...\n")
-    
+
     resultados = buscar_produtos_patrocinados(produto_busca)
-    
-    print(f"\n" + "="*50)
-    print(f"RESULTADOS DA BUSCA")
-    print(f"="*50)
-    print(f"Produto buscado: {resultados['produto_buscado']}")
-    print(f"Produtos encontrados: {len(resultados['produtos_patrocinados'])}")
-    print(f"Timestamp: {resultados['timestamp']}")
-    
-    if resultados['produtos_patrocinados']:
-        print(f"\n" + "="*50)
-        print("PRODUTOS PATROCINADOS ENCONTRADOS")
-        print("="*50)
-        
-        for i, produto_info in enumerate(resultados['produtos_patrocinados'], 1):
-            print(f"\n[PRODUTO {i}]")
-            print(f"Nome: {produto_info.get('nome', 'N/A')}")
-            print(f"Preço: {produto_info.get('preco', 'N/A')}")
-            print(f"Loja: {produto_info.get('loja', 'N/A')}")
-            print(f"Link: {produto_info.get('link', 'N/A')}")
-            print("-" * 40)
-    else:
-        print("\n Nenhum produto patrocinado foi encontrado.")
-        print("Isso pode acontecer se:")
-        print("- Não há produtos patrocinados para este termo")
-        print("- O Google mudou a estrutura da página")
-        print("- Há bloqueios anti-bot ativos")
-    
-    nome_arquivo = f"C:\\Users\\amand\\meiu\\monitoramento-inteligente-precos\\resultados\\resultado_{produto_busca.replace(' ', '_').lower().replace('/', '_')}.json"
+
+    # Exibir os resultados na tela
+    exibir_resultados(resultados)
+
+    nome_arquivo = f"resultado_{produto_busca.replace(' ', '_').lower().replace('/', '_')}.json"
     if salvar_resultados(resultados, nome_arquivo):
-        print(f"\n Busca concluída! Verifique o arquivo '{nome_arquivo}' para todos os resultados.")
-    
+        print(f"\n Busca concluída! Verifique o arquivo na pasta 'resultados' para todos os resultados.")
+
     return resultados
 
 if __name__ == "__main__":
     # Verificar se o arquivo produtos_temp.txt existe e usá-lo para buscas
     try:
-        from multi_buscador import MultiBuscador
-        
-        # Carregar produtos do arquivo
+        # Carregar produtos do arquivo produtos_temp.txt
         produtos_para_buscar = []
         arquivo_produtos = 'produtos_temp.txt'
-        
-        # Se arquivo temporário existe, usar ele, senão usar produtos.txt padrão
+
         if os.path.exists(arquivo_produtos):
             with open(arquivo_produtos, 'r', encoding='utf-8') as f:
                 produtos_para_buscar = [linha.strip() for linha in f if linha.strip()]
+
+            if not produtos_para_buscar:
+                print("O arquivo produtos_temp.txt está vazio. Não é possível realizar a busca.")
+                exit(1)
         else:
-            # Verificar se produtos.txt existe
-            if os.path.exists('produtos.txt'):
-                with open('produtos.txt', 'r', encoding='utf-8') as f:
-                    produtos_para_buscar = [linha.strip() for linha in f if linha.strip()]
-            else:
-                produtos_para_buscar = ['PAINEL CAEMMUN ESMERALDA 1,50']
-        
+            print("O arquivo produtos_temp.txt não foi encontrado. Não é possível realizar a busca.")
+            exit(1)
+
         print(f"Iniciando busca para {len(produtos_para_buscar)} produtos...")
-        
-        # Usando o MultiBuscador para processar múltiplos produtos
-        buscador = MultiBuscador()
-        if len(produtos_para_buscar) == 1:
-            # Para um único produto, executar diretamente
-            main(produto_busca=produtos_para_buscar[0])
-        else:
-            # Para múltiplos produtos, usar o buscador multithreaded
-            buscador.executar_buscas_simultaneas(produtos_para_buscar, max_threads=3)
-            
+
+        # Realizar busca para cada produto individualmente
+        for produto in produtos_para_buscar:
+            main(produto_busca=produto)
+
         # Remover arquivo temporário após processamento
         if os.path.exists('produtos_temp.txt'):
             try:
                 os.remove('produtos_temp.txt')
-            except:
-                pass
-            
+            except Exception as e:
+                print(f"Erro ao remover o arquivo temporário: {e}")
+
     except Exception as e:
         print(f"Erro ao executar buscas: {e}")
-        # Se ocorrer erro, tentar executar pelo menos um produto padrão
-        main(produto_busca='PAINEL CAEMMUN ESMERALDA 1,50')
+        exit(1)
