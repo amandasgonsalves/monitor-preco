@@ -89,18 +89,28 @@ def get_resultados():
                 except (json.JSONDecodeError, IOError):
                     continue
 
-    # Agrupa por timestamp (buscas feitas no mesmo minuto ficam juntas)
+    # Agrupa por batch_id (buscas em massa) ou por timestamp individual
     grupos = {}
     for r in resultados_brutos:
         ts = r.get('timestamp', 'Sem data')
-        # Agrupa por minuto (remove segundos) para juntar buscas em massa
-        try:
-            dt = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
-            chave = dt.strftime("%Y-%m-%d %H:%M")
-            chave_display = dt.strftime("%d/%m/%Y às %H:%M")
-        except (ValueError, TypeError):
+        batch_id = r.get('batch_id', None)
+
+        if batch_id:
+            # Busca em massa: agrupa pelo batch_id
+            chave = f"batch_{batch_id}"
+            try:
+                dt = datetime.strptime(batch_id, "%Y%m%d_%H%M%S")
+                chave_display = dt.strftime("%d/%m/%Y às %H:%M")
+            except (ValueError, TypeError):
+                chave_display = ts
+        else:
+            # Busca individual: usa o timestamp como chave única
             chave = ts
-            chave_display = ts
+            try:
+                dt = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+                chave_display = dt.strftime("%d/%m/%Y às %H:%M")
+            except (ValueError, TypeError):
+                chave_display = ts
 
         if chave not in grupos:
             grupos[chave] = {

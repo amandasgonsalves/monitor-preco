@@ -18,11 +18,11 @@ from selenium.webdriver.common.action_chains import ActionChains
 import random
 
 def configurar_driver():
-    """Configura e retorna o driver do Chrome com opções otimizadas - MODO VISÍVEL"""
+    """Configura e retorna o driver do Chrome com opções otimizadas - MODO HEADLESS"""
     chrome_options = Options()
 
-    # CONFIGURAÇÕES PARA MODO VISÍVEL (DESATIVA HEADLESS)
-    # chrome_options.add_argument("--headless=new")  # Comentado para exibir o navegador
+    # CONFIGURAÇÕES PARA MODO HEADLESS
+    chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")  # Desabilita GPU (importante para headless)
@@ -45,7 +45,7 @@ def configurar_driver():
 
     # Método 1: Usar WebDriver Manager (recomendado para compatibilidade)
     try:
-        print(" Configurando Chrome visível com WebDriver Manager...")
+        print(" Configurando Chrome headless com WebDriver Manager...")
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=chrome_options)
         return driver
@@ -54,11 +54,11 @@ def configurar_driver():
 
     # Método 2: Usar método direto do Chrome (Windows)
     try:
-        print(" Última tentativa - Chrome visível com configurações específicas...")
+        print(" Última tentativa - Chrome headless com configurações específicas...")
         driver = webdriver.Chrome(options=chrome_options)
         return driver
     except Exception as e:
-        print(f"Erro na configuração visível: {e}")
+        print(f"Erro na configuração headless: {e}")
 
     return None
 
@@ -568,13 +568,17 @@ def extrair_produtos_generico(driver):
     
     return produtos
 
-def salvar_resultados(resultados, nome_arquivo="resultados_google_shopping.json"):
+def salvar_resultados(resultados, nome_arquivo="resultados_google_shopping.json", batch_id=None):
     """Salva os resultados em um arquivo JSON na pasta 'resultados'"""
     try:
         # Cria a pasta 'resultados' se não existir
         pasta_resultados = "resultados"
         if not os.path.exists(pasta_resultados):
             os.makedirs(pasta_resultados)
+
+        # Adiciona batch_id ao resultado para agrupar buscas em massa
+        if batch_id:
+            resultados["batch_id"] = batch_id
 
         # Define o caminho completo do arquivo
         caminho_arquivo = os.path.join(pasta_resultados, nome_arquivo)
@@ -730,7 +734,7 @@ def buscar_produto(produto):
             except:
                 pass
 
-def main(produto_busca):
+def main(produto_busca, batch_id=None):
     """Função principal"""
     print("=== Buscador de Produtos Google Shopping (Área Patrocinados) ===\n")
 
@@ -748,7 +752,7 @@ def main(produto_busca):
     exibir_resultados(resultados)
 
     nome_arquivo = f"resultado_{produto_busca.replace(' ', '_').lower().replace('/', '_')}.json"
-    if salvar_resultados(resultados, nome_arquivo):
+    if salvar_resultados(resultados, nome_arquivo, batch_id=batch_id):
         print(f"\n Busca concluída! Verifique o arquivo na pasta 'resultados' para todos os resultados.")
 
     return resultados
@@ -773,9 +777,12 @@ if __name__ == "__main__":
 
         print(f"Iniciando busca para {len(produtos_para_buscar)} produtos...")
 
+        # Gera um batch_id único para agrupar todas as buscas em massa
+        batch_id = time.strftime("%Y%m%d_%H%M%S")
+
         # Realizar busca para cada produto individualmente
         for produto in produtos_para_buscar:
-            main(produto_busca=produto)
+            main(produto_busca=produto, batch_id=batch_id)
 
         # Remover arquivo temporário após processamento
         if os.path.exists('produtos_temp.txt'):
